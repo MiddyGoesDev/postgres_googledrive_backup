@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# use like: ./cron_backup.sh "path/to/config.yaml"
+
 # yaml parser function
 # https://stackoverflow.com/questions/5014632/how-can-i-parse-a-yaml-file-from-a-linux-shell-script
 function parse_yaml {
@@ -19,8 +21,13 @@ function parse_yaml {
    }'
 }
 
+# read first and only command line argument, which must be the full, absolute path to the config.yaml file
+config_path=$1
+
+echo "config_path: $config_path"
+
 # parse the yaml configuration file
-eval $(parse_yaml config.yaml)
+eval $(parse_yaml $config_path)
 
 
 # get current timestamp
