@@ -1,0 +1,6 @@
+credtials_path: "credentials.json"
+token_path: "token.pickle"
+local_backup_folder: "/Users/finn/Desktop"
+remote_backup_folder: "GitBackupYamlTest"
+contain_querry: ".sql"
+target_db: "vsdb"
