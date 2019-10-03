@@ -1,16 +1,17 @@
 #!/usr/bin/python3
 
 from __future__ import print_function
-import pickle
-import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from os import listdir
 from os.path import isfile, join
 from googleapiclient.http import MediaFileUpload
-import argparse
 from datetime import datetime
+import argparse
+import pickle
+import os.path
+import ruamel.yaml
 
 print()
 print("Upload at: " + str(datetime.now()))
@@ -23,24 +24,14 @@ parser = argparse.ArgumentParser(description=(
     "we obtain the file credentials.json, which is used to generate the token.pickle file from the browser that will "
     "pop up the first time this script is executed"))
 
-parser.add_argument("-lp", "--local_path", type=str, help=(
-    "The path to the local folder in which the files exist, that are to be uploaded"))
-parser.add_argument("-df", "--drive_folder", type=str, help=(
-    "The folder in the cloud drive storage, in which the local files will be uploaded"))
-parser.add_argument("-cq", "--contain_querry", type=str, help=(
-    "The querry that is used to determine that a file is of to be uploaded into the cloud storage"))
+parser.add_argument("-cf", "--config", type=str, help="The path to the config.yaml file")
 
 args = parser.parse_args()
 
-# provide default values for the arguments in case they are not supplied
-if args.local_path is None:
-    args.local_path = "/Users/finn/Desktop"
-
-if args.drive_folder is None:
-    args.drive_folder = "GitBackupTest"
-
-if args.contain_querry is None:
-    args.contain_querry = ".sql"
+# read the config file passed as argument
+yaml = ruamel.yaml.YAML()
+with open(args.config) as f:
+    config = yaml.load(f)
 
 
 class Synchronizer:
@@ -50,7 +41,6 @@ class Synchronizer:
 
         # Controls what the app is allowed to do in the cloud storage
         # If modifying these scopes, delete the file token.pickle. A new authentication process will be started that
-        # self.scopes = ['https://www.googleapis.com/auth/drive']
         self.scopes = ['https://www.googleapis.com/auth/drive.file',
                        'https://www.googleapis.com/auth/drive.install']
 
@@ -94,7 +84,7 @@ class Synchronizer:
         page_token = None
         folder_id = ""
         while True:
-            response = self.service.files().list(q=str("name='" + args.drive_folder + "'"),
+            response = self.service.files().list(q=str("name='" + folder_name + "'"),
                                                  spaces='drive',
                                                  fields='nextPageToken, files(id, name)',
                                                  pageToken=page_token).execute()
@@ -106,9 +96,9 @@ class Synchronizer:
 
                 # if the remote folder does not exist
                 if not folder_id:
-                    print("Creating folder {} in GoogleDrive storage...".format(args.drive_folder))
+                    print("Creating folder {} in GoogleDrive storage...".format(folder_name))
                     file_metadata = {
-                        'name': args.drive_folder,
+                        'name': folder_name,
                         'mimeType': 'application/vnd.google-apps.folder'
                     }
                     file = self.service.files().create(body=file_metadata,
@@ -120,10 +110,10 @@ class Synchronizer:
 
         return folder_id
 
-    def get_remote_files(self, contain_querry):
+    def get_remote_files(self, contain_query):
         """
         find all files in drive whose names containes the querry
-        :param contain_querry: the search querry which is checked for each files name
+        :param contain_query: the search querry which is checked for each files name
         :return: a list containing the file names of matches
         """
         page_token = None
@@ -131,7 +121,7 @@ class Synchronizer:
         while True:
             print("Searching for files in Cloud storage...")
             # this gives us all files where the name contains .pdf (use this for .sql
-            response = self.service.files().list(q="name contains '" + str(contain_querry) + "'",
+            response = self.service.files().list(q="name contains '" + str(contain_query) + "'",
                                                  spaces='drive',
                                                  # fields='nextPageToken, files(id, name)',
                                                  fields='nextPageToken, files(*)',
@@ -146,23 +136,23 @@ class Synchronizer:
             if page_token is None:
                 break
 
-        print("Found {} files in cloud storage containing the querry: {}".format(len(files_in_drive), contain_querry))
+        print("Found {} files in cloud storage containing the querry: {}".format(len(files_in_drive), contain_query))
         return files_in_drive
 
     @staticmethod
-    def get_local_files(local_path, contain_querry):
+    def get_local_files(local_path, contain_query):
         """
-        lists all files in the folder whose name contains the contain_querry
+        lists all files in the folder whose name contains the contain_query
         :param local_path: the path of the folder in which to search
-        :param contain_querry: the querry each files name in the folder must contain
+        :param contain_query: the querry each files name in the folder must contain
         :return: a list of (full) file paths of the matches
         """
         print("Searching for files in local folder...")
         if os.path.exists(local_path):
             local_files = [join(local_path, f) for f in listdir(local_path) if
-                           isfile(join(local_path, f)) and contain_querry in f]
+                           isfile(join(local_path, f)) and contain_query in f]
 
-            print("Found {} files in {} containing the querry {}".format(len(local_files), local_path, contain_querry))
+            print("Found {} files in {} containing the querry {}".format(len(local_files), local_path, contain_query))
             return local_files
 
         else:
@@ -205,11 +195,11 @@ if __name__ == '__main__':
     Synchronizer.authorize_app()
 
     # get a list of files that exists in the remote drive folder and contain the querry
-    remote_sql_files = Synchronizer.get_remote_files(contain_querry=args.contain_querry)
+    remote_sql_files = Synchronizer.get_remote_files(contain_query=config["contain_query"])
 
     # get a second list of files that exists in the remote folder and contain the querry
-    local_sql_files = Synchronizer.get_local_files(local_path=args.local_path,
-                                                   contain_querry=args.contain_querry)
+    local_sql_files = Synchronizer.get_local_files(local_path=config["local_backup_folder"],
+                                                   contain_query=config["contain_query"])
 
     # compare the lists, upload files that exist on local device but not in remote storage
     uploaded_new_file = False
@@ -217,7 +207,7 @@ if __name__ == '__main__':
         if os.path.basename(local_file) not in remote_sql_files:
             uploaded_new_file = True
             print("Local file {} is not in list of remote files".format(os.path.basename(local_file)))
-            Synchronizer.upload_file(file=local_file, drive_folder=args.drive_folder)
+            Synchronizer.upload_file(file=local_file, drive_folder=config["remote_backup_folder"])
 
     if not uploaded_new_file:
         print(("No file has been uploaded, because no file was found in the local directory that was not already in "
