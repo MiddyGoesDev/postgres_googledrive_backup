@@ -14,30 +14,30 @@ from datetime import datetime
 
 print()
 print("Upload at: " + str(datetime.now()))
-os.chdir(r"/home/pcadmin/upload_script/")
+# os.chdir(r"/home/pcadmin/upload_script/")
 
 # setup cli argparser interface for more flexibility
-parser = argparse.ArgumentParser(description=("This python script uploads files into the drive storage of the google "
-                                              "account vetsoftbackup@gmail.com. For this it is required that the files "
-                                              "token.pickle and credentials.json exists in the same directory as the "
-                                              "this python file."))
+parser = argparse.ArgumentParser(description=(
+    "This python script uploads files into the drive storage of a google account. For this to work, that account must "
+    "activate the drive api (under step 1 here: https://developers.google.com/drive/api/v3/quickstart/python). There "
+    "we obtain the file credentials.json, which is used to generate the token.pickle file from the browser that will "
+    "pop up the first time this script is executed"))
 
-parser.add_argument("-lp", "--local_path", type=str, help=("The path to the local folder in which the files exist, "
-                                                           "that are to be uploaded"))
-parser.add_argument("-df", "--drive_folder", type=str, help=("The folder in the cloud drive storage, in which the "
-                                                             "local files will be uploaded"))
-parser.add_argument("-cq", "--contain_querry", type=str, help=("The querry that is used to determine that a file is of "
-                                                               "to be uploaded into the cloud storage"))
+parser.add_argument("-lp", "--local_path", type=str, help=(
+    "The path to the local folder in which the files exist, that are to be uploaded"))
+parser.add_argument("-df", "--drive_folder", type=str, help=(
+    "The folder in the cloud drive storage, in which the local files will be uploaded"))
+parser.add_argument("-cq", "--contain_querry", type=str, help=(
+    "The querry that is used to determine that a file is of to be uploaded into the cloud storage"))
 
 args = parser.parse_args()
 
 # provide default values for the arguments in case they are not supplied
 if args.local_path is None:
-    args.local_path = "/tmp/vsdb_backups"
-    # args.local_path = "/Users/finn/Desktop/vetsoft_backup"
+    args.local_path = "/Users/finn/Desktop"
 
 if args.drive_folder is None:
-    args.drive_folder = "VetSoftBackup"
+    args.drive_folder = "GitBackupTest"
 
 if args.contain_querry is None:
     args.contain_querry = ".sql"
@@ -50,7 +50,9 @@ class Synchronizer:
 
         # Controls what the app is allowed to do in the cloud storage
         # If modifying these scopes, delete the file token.pickle. A new authentication process will be started that
-        self.scopes = ['https://www.googleapis.com/auth/drive']
+        # self.scopes = ['https://www.googleapis.com/auth/drive']
+        self.scopes = ['https://www.googleapis.com/auth/drive.file',
+                       'https://www.googleapis.com/auth/drive.install']
 
         # Starts the authentication process of the client-side script
         self.authorize_app()
@@ -60,24 +62,23 @@ class Synchronizer:
         Shows basic usage of the Drive v3 API.
         Prints the names and ids of the first 10 files the user has access to.
         """
-        #print("DEBUG: " + str(os.getcwd()))
+
         creds = None
         # The file token.pickle stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
         # time.
         if os.path.exists('token.pickle'):
-            #print("DEBUG: token found")
             with open('token.pickle', 'rb') as token:
                 creds = pickle.load(token)
+
         # If there are no (valid) credentials available, let the user log in.
         if not creds or not creds.valid:
-            #print("DEBUG: in not creds or not valied")
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', self.scopes)
+                flow = InstalledAppFlow.from_client_secrets_file('credentials.json', self.scopes)
                 creds = flow.run_local_server()
+
             # Save the credentials for the next run
             with open('token.pickle', 'wb') as token:
                 pickle.dump(creds, token)
@@ -91,19 +92,32 @@ class Synchronizer:
         :return:  The ID of the folder
         """
         page_token = None
+        folder_id = ""
         while True:
-            response = self.service.files().list(q="name='VetSoftBackup'",
+            response = self.service.files().list(q=str("name='" + args.drive_folder + "'"),
                                                  spaces='drive',
                                                  fields='nextPageToken, files(id, name)',
                                                  pageToken=page_token).execute()
             for file in response.get('files', []):
                 # Process change
-                # print('Found target remote folder: %s (%s)' % (file.get('name'), file.get('id')))
                 folder_id = file.get('id')
             page_token = response.get('nextPageToken', None)
             if page_token is None:
-                break
-        #print("DEBUG: parent folder id {}".format(folder_id))
+
+                # if the remote folder does not exist
+                if not folder_id:
+                    print("Creating folder {} in GoogleDrive storage...".format(args.drive_folder))
+                    file_metadata = {
+                        'name': args.drive_folder,
+                        'mimeType': 'application/vnd.google-apps.folder'
+                    }
+                    file = self.service.files().create(body=file_metadata,
+                                                       fields='id').execute()
+
+                    folder_id = file.get('id')
+                else:
+                    break
+
         return folder_id
 
     def get_remote_files(self, contain_querry):
@@ -126,7 +140,6 @@ class Synchronizer:
             for file in response.get('files', []):
                 # only use file's that are not delete (this is probably only relevant for development)
                 if not file["trashed"]:
-                    #print('Found file: %s, dirve id: %s ' % (file.get('name'), file.get('id')))
                     files_in_drive.append(file.get('name'))
 
             page_token = response.get('nextPageToken', None)
@@ -149,9 +162,6 @@ class Synchronizer:
             local_files = [join(local_path, f) for f in listdir(local_path) if
                            isfile(join(local_path, f)) and contain_querry in f]
 
-            #for file in local_files:
-            #    print("Found file: " + file)
-
             print("Found {} files in {} containing the querry {}".format(len(local_files), local_path, contain_querry))
             return local_files
 
@@ -164,7 +174,6 @@ class Synchronizer:
         :param file: The file that is uploaded
         :param drive_folder: The target folder into which the file should be upload. If None uploads into root
         """
-        #print("DEBUG: in upload file")
         if drive_folder is not None:
             # get id for parent folder, to save file in folder in cloud
             parent_id = self.get_folder_id(folder_name=drive_folder)
@@ -172,7 +181,6 @@ class Synchronizer:
         else:
             file_metadata = {'name': str(os.path.basename(file))}
 
-        #print("DEBUG: constructed file metadata: {}".format(file_metadata))
         # get file type for metadata and mimetype
         filename, file_extension = os.path.splitext(os.path.basename(file))
         if file_extension == '.sql':
@@ -184,21 +192,17 @@ class Synchronizer:
         media = MediaFileUpload(str(file),
                                 mimetype=mimetype)
 
-        #print("DEBUG: before upload")
         file = self.service.files().create(body=file_metadata,
                                            media_body=media,
                                            fields='id').execute()
 
-        #print("DEBUG: post upload")
         print("File {} has been uploaded into the cloud folder {}".format(file_metadata["name"], drive_folder))
 
 
 if __name__ == '__main__':
-    #print("DEBUG: in if name == main")
     # init drive api
     Synchronizer = Synchronizer()
     Synchronizer.authorize_app()
-    #print("DEBUG: past init")
 
     # get a list of files that exists in the remote drive folder and contain the querry
     remote_sql_files = Synchronizer.get_remote_files(contain_querry=args.contain_querry)
@@ -207,8 +211,7 @@ if __name__ == '__main__':
     local_sql_files = Synchronizer.get_local_files(local_path=args.local_path,
                                                    contain_querry=args.contain_querry)
 
-    #print("DEBUG: begine upload")
-    # compare the list, upload files that exist on local device but not in remote storage
+    # compare the lists, upload files that exist on local device but not in remote storage
     uploaded_new_file = False
     for local_file in local_sql_files:
         if os.path.basename(local_file) not in remote_sql_files:
