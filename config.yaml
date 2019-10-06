@@ -2,13 +2,13 @@
 credtials_path: "credentials.json"
 
 # full, absolute path to the token.pickle file needed for oAuth
-token_path: "token.pickle"
+token_path: "/Users/finn/Desktop/postgres_googledrive_backup/credentials.json"
 
 # full, absolute path to the local folder, in which sql dumps are (temporary) stored
-local_backup_folder: "/Users/finn/Desktop"
+local_backup_folder: "/Users/finn/Desktop/postgres_googledrive_backup/token.pickle"
 
 # name of the remote google drive folder, into which sql dumps are uploaded for permanent storage
-remote_backup_folder: "GitBackupYamlTest"
+remote_backup_folder: "GitBackup"
 
 # the query used to determine whether a file in the local_backup_folder should be uploaded
 contain_query: ".sql"
