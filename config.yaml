@@ -1,11 +1,11 @@
 # full, absolute path to the credentials.json file needed for oAuth
-credtials_path: "credentials.json"
+credtials_path: "/home/pcadmin/automatic_backup/credentials.json"
 
 # full, absolute path to the token.pickle file needed for oAuth
-token_path: "/Users/finn/Desktop/postgres_googledrive_backup/credentials.json"
+token_path: "/home/pcadmin/automatic_backup/token.pickle"
 
 # full, absolute path to the local folder, in which sql dumps are (temporary) stored
-local_backup_folder: "/Users/finn/Desktop/postgres_googledrive_backup/token.pickle"
+local_backup_folder: "/tmp/vsdb_backups"
 
 # name of the remote google drive folder, into which sql dumps are uploaded for permanent storage
 remote_backup_folder: "GitBackup"

@@ -26,22 +26,31 @@ beforehand**:
     ```
     git clone https://github.com/MiddyGoesDev/postgres_googledrive_backup.git automatic_backup
     ```
+    
+2. Create virtualenv:
+    ```
+    virtualenv -p python3 backup_venv
+    source backup_venv/bin/activate
+    ``` 
 
 2. Install the requirements:
     ```
     cd automatic_backup
-    pip install -r requirements.txt
+    pip3 install -r requirements.txt
     ```
 
 3. 
     Assuming that you have obtained both the credentials.json and token.pickle file, set their paths in the config.yaml
-    file. Also enter the path to the folder where you which to temporary store the local backup files and the name of
+    file and make sure the postgres user has read permissions. Also enter the path to the folder where you which to temporary store the local backup files and the name of
     the GoogleDrive Folder into which the backup files should be uploaded.
+    ```
+    chmod 777 automatic_backup 
+    ```
     
 4. 
     Set up the crontab of the postgres user. It's important that you use the postgres user's crontab, because only the 
     postgres users has access to the postgres database tables. Simply run the following lines of code and append the 
-    content of the crontab.md file to the crontab:
+    content of the crontab.md file to the crontab (changes the paths so that they point to the executables and binaries):
     ```
     sudo su postgres
     crontab -e
