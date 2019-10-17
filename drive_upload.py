@@ -12,6 +12,7 @@ import argparse
 import pickle
 import os.path
 import ruamel.yaml
+import sys
 
 print()
 print("Upload at: " + str(datetime.now()))
@@ -38,6 +39,7 @@ class Synchronizer:
 
     def __init__(self):
         self.service = None
+        self.auth_run = False
 
         # Controls what the app is allowed to do in the cloud storage
         # If modifying these scopes, delete the file token.pickle. A new authentication process will be started that
@@ -66,6 +68,7 @@ class Synchronizer:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
+                self.auth_run = True
                 flow = InstalledAppFlow.from_client_secrets_file(config["credtials_path"], self.scopes)
                 creds = flow.run_local_server()
 
@@ -192,12 +195,16 @@ class Synchronizer:
 if __name__ == '__main__':
     # init drive api
     Synchronizer = Synchronizer()
-    Synchronizer.authorize_app()
+    auth_run = Synchronizer.authorize_app()
 
-    # get a list of files that exists in the remote drive folder and contain the querry
+    # if this was an execution acquiring the token.pickle file, stop further execution
+    if Synchronizer.auth_run:
+        sys.exit("Token file has been acquired, exiting...")
+
+    # get a list of files that exists in the remote drive folder and contain the query
     remote_sql_files = Synchronizer.get_remote_files(contain_query=config["contain_query"])
 
-    # get a second list of files that exists in the remote folder and contain the querry
+    # get a second list of files that exists in the remote folder and contain the query
     local_sql_files = Synchronizer.get_local_files(local_path=config["local_backup_folder"],
                                                    contain_query=config["contain_query"])
 
