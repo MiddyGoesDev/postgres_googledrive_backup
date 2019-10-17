@@ -1,8 +1,8 @@
 # full, absolute path to the credentials.json file needed for oAuth
-credtials_path: "/home/pcadmin/automatic_backup/credentials.json"
+credtials_path: "/Users/finn/Desktop/credentials.json"
 
 # full, absolute path to the token.pickle file needed for oAuth
-token_path: "/home/pcadmin/automatic_backup/token.pickle"
+token_path: "token.pickle"
 
 # full, absolute path to the local folder, in which sql dumps are (temporary) stored
 local_backup_folder: "/tmp/vsdb_backups"
