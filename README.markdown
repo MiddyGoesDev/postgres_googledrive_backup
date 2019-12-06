@@ -18,7 +18,8 @@ beforehand**:
     authorization can only be done in an interactive manner via a browser](https://stackoverflow.com/questions/28078490/google-drive-oauth2-without-browser).
     After you have obtained the **credentials.json** file, you can authorize the app / script. For that you must first 
     clone this repository, so execute the first two steps of the below installation guide.
-    Now, that you have cloned the repository and installed it's requirements, execute script and open browser blah..
+    Now, that you have cloned the repository and installed it's requirements, execute the main python script and complete the 
+    few authorization steps in the browsrt.
 
 
 ## Installation
